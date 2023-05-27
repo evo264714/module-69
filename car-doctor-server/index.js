@@ -10,7 +10,7 @@ const port = process.env.PORT || 5000;
 app.use(cors())
 app.use(express.json())
 
-console.log(process.env.DB_PASS);
+// console.log(process.env.DB_PASS);
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.xmw7zrv.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -30,8 +30,8 @@ const verifyJWT = (req, res, next) => {
     }
     const token = authorization.split(' ')[1];
     jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-        if(err){
-            return res.status(401).send({error: true, message: 'unauthorized access'})
+        if (err) {
+            return res.status(401).send({ error: true, message: 'unauthorized access' })
         }
         req.decoded = decoded;
         next();
@@ -51,13 +51,26 @@ async function run() {
             const user = req.body;
             console.log(user);
             const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
-            console.log(token);
             res.send({ token });
         })
 
         //services routes
         app.get('/services', async (req, res) => {
-            const cursor = serviceCollection.find();
+            const sort = req.query.sort;
+            const search = req.query.search;
+            console.log(search);
+            // const query = { price: { $gt: 50, $lte: 150 } }
+            // const query ={};
+            const query = {
+                title: { $regex: search, $options: 'i' }
+            }
+
+            const options = {
+                sort: {
+                    "price": sort === 'asc' ? 1 : -1
+                }
+            }
+            const cursor = serviceCollection.find(query, options);
             const result = await cursor.toArray();
             res.send(result);
         })
@@ -81,8 +94,8 @@ async function run() {
             const decoded = req.decoded;
             console.log('came back after verify', decoded);
 
-            if(decoded.email !== req.query.email){
-                return res.status(403).send({error: 1, message: 'forbidden access'})
+            if (decoded.email !== req.query.email) {
+                return res.status(403).send({ error: 1, message: 'forbidden access' })
             }
 
             let query = {};
